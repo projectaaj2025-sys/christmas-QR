@@ -45,6 +45,7 @@ const pick = <T,>(arr: T[], r: number): T => arr[Math.min(arr.length - 1, Math.f
 
 /** blend two #rrggbb colours */
 function lerpColor(a: string, b: string, t2: number): string {
+  if (!a.startsWith('#') || !b.startsWith('#')) return t2 < 0.5 ? a : b;
   const pa = parseInt(a.slice(1), 16);
   const pb = parseInt(b.slice(1), 16);
   const mix = (shift: number) => {
@@ -71,11 +72,13 @@ function darken(color: string, extra = 0): string {
   return shade(base, -0.66 - extra);
 }
 
-/** mix a #rrggbb colour toward black (k < 0) or white (k > 0) */
+/** mix a #rrggbb colour toward black (k < 0) or white (k > 0); returns hex so
+ *  every downstream blend can parse it again */
 function shade(hex: string, k: number): string {
   const n = parseInt(hex.replace('#', ''), 16);
-  const mix = (c: number) => Math.round(k < 0 ? c * (1 + k) : c + (255 - c) * k);
-  return `rgb(${mix((n >> 16) & 255)},${mix((n >> 8) & 255)},${mix(n & 255)})`;
+  const mix = (c: number) => Math.min(255, Math.max(0, Math.round(k < 0 ? c * (1 + k) : c + (255 - c) * k)));
+  const to2 = (v: number) => v.toString(16).padStart(2, '0');
+  return `#${to2(mix((n >> 16) & 255))}${to2(mix((n >> 8) & 255))}${to2(mix(n & 255))}`;
 }
 
 const CANOPY = ['#', '#', '%', '%', '%', '@', '@', '@', '%', '+', '*'];

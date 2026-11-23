@@ -36,8 +36,8 @@ const { buildLink, readState } = await bundle('src/lib/urlState.ts');
 
 const cases = [
   { kind: 'classic', payload: 'https://hh.kz/vacancy/12345678', from: 'Айгуль', message: 'С Новым годом!' },
-  { kind: 'gold', payload: 'WIFI:T:WPA;S:Home_5G;P:merry-christmas;;', from: '', message: '' },
-  { kind: 'candy', payload: 'С Новым годом! 🎄', from: 'santa', message: '🎁' },
+  { kind: 'fairy', payload: 'WIFI:T:WPA;S:Home_5G;P:merry-christmas;;', from: '', message: '' },
+  { kind: 'glitch', payload: 'С Новым годом! 🎄', from: 'santa', message: '🎁' },
 ];
 
 const dir = mkdtempSync(join(tmpdir(), 'xmas-receive-'));
