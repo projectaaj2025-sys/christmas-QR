@@ -1,88 +1,98 @@
 # christmas qr
 
-A link turns into a Christmas tree that **is** a scannable QR code — and back again with a tap.
+Ссылка превращается в ёлку, которая **сама является** сканируемым QR-кодом — и обратно по нажатию.
 
-This is a faithful rebuild of [xmasqr.vercel.app](https://xmasqr.vercel.app/?tree=classic):
-the same 3D ASCII point-cloud engine, the same page structure, the same ten trees. On top of the
-original it adds **share** and **embed**, so you can send your tree to someone and put it on a site.
+Это точная реконструкция [xmasqr.vercel.app](https://xmasqr.vercel.app/?tree=classic): тот же
+объёмный движок из ASCII-точек, та же структура страницы, те же десять ёлок. Сверх оригинала
+добавлены **шаринг** и **встраивание** — ёлку можно отправить другу и поставить на сайт.
 
 ```
 public/
-  index.html        the page: brand, hint, panel with the URL row, ten trees, snow / baubles
-  embed.html        the same tree as a standalone widget for <iframe>
-  styles.css        the original's tokens, panel, picker, switches, credits, toast
-  js/tree-engine.js the engine: QR encoder, 62k-point canopy, z-buffered glyph grid, camera
-  js/app.js         page logic: assemble → pick a tree → tilt up → tap to look down
+  index.html        страница: бренд, подсказка, панель со ссылкой, десять ёлок, снег / игрушки
+  embed.html        та же ёлка отдельным виджетом для <iframe>
+  styles.css        токены оригинала: панель, сетка ёлок, переключатели, кредиты, тост
+  js/tree-engine.js движок: QR-энкодер, 62k точек кроны, z-буфер по глифам, камера
+  js/app.js         логика: сборка кода → выбор ёлки → наклон → тап «посмотреть код»
 scripts/
-  verify-scan.mjs   renders the flat frame and decodes it with jsQR (every tree, phone + desktop)
-  verify-receive.mjs  jsdom: a shared link opens as a standing tree, share URL round-trips
-  verify-embed.mjs  jsdom: the widget cycles the camera on its own
+  verify-scan.mjs   рендерит плоский кадр и декодирует его через jsQR (все ёлки, телефон и десктоп)
+  verify-receive.mjs  jsdom: присланная ссылка открывается стоящей ёлкой, ссылка шаринга замыкается
+  verify-embed.mjs  jsdom: виджет сам прогоняет камеру по циклу
+  smoke-page.mjs    jsdom: настоящая страница, кнопки и меню работают
 ```
 
-No framework, no bundler step — the page is the same plain ES5 the original ships.
+Ни фреймворка, ни шага сборки — страница такой же обычный ES5, как в оригинале.
 
-## Quick start
+## Быстрый старт
 
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm run build    # static copy in dist/
-npm run verify   # scan + receive + embed checks, no browser needed
+npm run build    # статичная копия в dist/
+npm run verify   # проверки сканирования, приёма и встраивания, браузер не нужен
 ```
 
-## How the tree works
+## Как устроена ёлка
 
-The engine builds one point per glyph. Every dark QR module is sampled for needle points inside a
-scalloped spruce cone: the module's position picks the tier radius, a jittered radius window keeps
-the surface loose, and each point carries a type — needle, bauble body, bauble cap, light, garland,
-snow cap, lace edge, trunk, ground. Each frame all points are rotated by the camera spin, tilted by
-the camera angle, perspective-divided and dropped into a **z-buffer of glyph cells**. One character
-per cell wins, the nearest — that is the whole 3D look: `#`, `%`, `*`, `+`, `=`, `o`, `O`, `♥`, `●`.
+Движок строит одну точку на глиф. Каждый тёмный модуль QR-кода даёт точки-иголки внутри конуса
+ели с зубчатыми ярусами: положение модуля задаёт радиус яруса, разбросанное окно радиуса держит
+поверхность рыхлой, а каждая точка несёт тип — иголка, тело шара, шапочка шара, огонёк, гирлянда,
+снежная шапка, кружевная кромка, ствол, земля. Каждый кадр все точки поворачиваются вместе с
+камерой, наклоняются её углом, делятся на перспективу и падают в **z-буфер по ячейкам глифов**.
+Из каждой ячейки побеждает один символ — ближайший. В этом и весь объём: `#`, `%`, `*`, `+`, `=`,
+`o`, `O`, `♥`, `●`.
 
-- **camera** 0 → 1: straight down on the code, then tilted 80° to a side-on tree with a slow spin,
-  a ±10° sway and a shallow perspective.
-- **grow** 0 → 1: the canopy grows up out of the ground, point by point.
-- **drop** 0 → 1: the code reassembles from the centre out, finder squares landing as single blocks.
-- **star, baubles, snow, bloom**: a five-spike ASCII star above the crown, 44 spheres (or an even
-  scatter for the ribbon tree) with specular and rim shading, drifting flakes, and a blurred copy of
-  the frame composited with `lighter` for glow.
+- **камера** 0 → 1: строго сверху на код, затем наклон на 80° — ёлка сбоку, медленное вращение,
+  покачивание ±10° и лёгкая перспектива;
+- **рост** 0 → 1: крона поднимается из земли, точка за точкой;
+- **сборка** 0 → 1: код собирается от центра наружу, квадраты-маркеры садятся целыми блоками;
+- **звезда, шары, снег, свечение**: пятилучевая ASCII-звезда над кроной, 44 сферы (у розовой —
+  равномерный разброс) с бликом и ободком, падающие снежинки и размытая копия кадра,
+  скомпонованная через `lighter`.
 
-## Why it still scans
+## Почему он всё-таки сканируется
 
-- Looking down, `cam` is exactly 0, so every module is drawn as a **pixel-aligned square** in a
-  projected quad — no gaps, no fractional edges, no glyph strokes.
-- The flat state renders with `clean: true`, which drops the canopy glyphs, the star, snow and the
-  background field, leaving a clean code in the tree's colours.
-- The code is framed with `fill` chosen so even a 33-module payload keeps ≈5 px per module on a
-  390 px phone screen.
-- `scripts/verify-scan.mjs` decodes 96 frames — all ten trees × four payloads (up to 173 bytes,
-  Cyrillic + emoji) × desktop and phone — both at native size and downscaled to a 640 px capture.
+- Сверху `cam` равен ровно 0, поэтому каждый модуль рисуется **выровненным по пикселям
+  квадратом** в спроецированном четырёхугольнике — без щелей, дробных краёв и штрихов глифов.
+- Плоское состояние рисуется с `clean: true`: глифы кроны, звезда, снег и фоновое поле гаснут,
+  остаётся чистый код в цветах дерева.
+- Кадрирование подобрано по `fill` так, чтобы даже payload в 33 модуля держал ≈5 px на модуль
+  на экране телефона шириной 390 px.
+- `scripts/verify-scan.mjs` декодирует 96 кадров — все десять ёлок × четыре payload'а (до 173
+  байт, кириллица и эмодзи) × десктоп и телефон — и в родном размере, и после даунскейла до
+  640 px, то есть так, как его видит камера.
 
-## Sharing a tree
+## Как отправить ёлку
 
-State lives in the URL: `?link=<your link>&tree=<palette>`, plus `snow=0` / `baubles=0`.
-Open such a link and the tree is already standing, in the sender's palette.
+Состояние живёт в URL: `?link=<ваша ссылка>&tree=<палитра>`, плюс `snow=0` и `baubles=0`.
+Открытая такая ссылка сразу показывает стоящую ёлку в палитре отправителя.
 
-- **Send a tree** — the native share sheet where it exists, a copied link everywhere else.
-- The share button in the panel offers copy, **Download QR** (a 1000 px PNG, rendered at 2000 px
-  and downscaled so edges stay crisp), X, Facebook and WhatsApp.
+- **Кнопка шаринга** в панели: скопировать ссылку, **скачать QR** (PNG 1000 px, рендер в 2000 px
+  с даунскейлом — края остаются резкими), встроить на сайт, X, Facebook, WhatsApp.
+- Где есть системное меню «Поделиться» — используется оно, иначе копируется ссылка.
 
-## Embedding
+## Как встроить на сайт
 
-The share menu's **Embed on a site** gives you:
+Пункт **«Встроить на сайт»** в меню шаринга даёт готовый фрагмент:
 
 ```html
-<iframe src="https://your.site/?embed=1&link=…&tree=classic" title="Christmas QR"
+<iframe src="https://ваш-сайт/?embed=1&link=…&tree=classic" title="Christmas QR — ёлка из QR-кода"
         style="width:360px;height:480px;border:0;border-radius:16px;overflow:hidden"
         loading="lazy"></iframe>
 ```
 
-The widget hides the page furniture, cycles code → tilt → tree → back on a 24 s loop, and takes
-`tree`, `snow` and `baubles` from the URL too. `embed.html` answers with
-`Content-Security-Policy: frame-ancestors *` so it can live in any page.
+Виджет прячет интерфейс страницы и сам проходит цикл «код → наклон → ёлка → обратно» за 24
+секунды; `tree`, `snow` и `baubles` тоже берутся из URL. `embed.html` отдаётся с заголовком
+`Content-Security-Policy: frame-ancestors *`, поэтому живёт в любой странице.
 
-## Trees
+## Ёлки
 
-`classic`, `silver` (`dots`), `blush`, `snowy` (`snow`), `midnight` (`blue`), `fairy`, `neon`,
-`lace`, `glitch`, `pink` (`ribbon`) — the palette ids stay the engine's (`snow`, `dots`, `ribbon`…),
-the picker shows the original's names and order.
+Классика (`classic`), Серебро (`dots`), Румянец (`blush`), Снежная (`snow`), Полночь (`blue`),
+Сказочная (`fairy`), Неон (`neon`), Кружево (`lace`), Глитч (`glitch`), Розовая (`ribbon`).
+Идентификаторы палитр остались движковыми, порядок и раскладка — как в оригинале.
+
+## Что отличается от оригинала
+
+- Тело оригинального `js/app.js` сайт отдаёт пустым, поэтому тайминги страницы воспроизведены по
+  поведению (наклон ~1.1 с, рост ~1.5 с, сборка кода ~1.3 с), а не скопированы.
+- Добавлен режим `clean` для плоского кадра — он гасит глифы ёлки, чтобы код читался с телефона.
+- Добавлены шаринг, скачивание PNG и страница-виджет `embed.html`.

@@ -22,6 +22,20 @@
 
   // the picker order from the original page: the eight originals, then the newer three
   var PICKER = ['classic', 'dots', 'blush', 'snow', 'blue', 'fairy', 'neon', 'lace', 'glitch', 'ribbon'];
+  // Russian names for the picker (the engine keeps the original English metadata)
+  var LABELS = {
+    classic: ['Классика', 'зелёные ярусы, красные шары, золотая гирлянда и звезда'],
+    dots: ['Серебро', 'серебряные точки-светодиоды и винные шары'],
+    blush: ['Румянец', 'зелёная ёлка с розово-белой лентой и жемчужными шарами'],
+    snow: ['Снежная', 'тёмная хвоя под толстым снегом, ледяные шары и холодные огни'],
+    blue: ['Полночь', 'глубокий синий, лавандовый иней, синие и розовые огни'],
+    fairy: ['Сказочная', 'тёмная ель с инеем на кончиках и тёплой золотой гирляндой'],
+    neon: ['Неон', 'ярко-зелёные глифы и радужные огни'],
+    lace: ['Кружево', 'тёмно-зелёные ярусы с белой кружевной кромкой'],
+    glitch: ['Глитч', 'электрические синие тона, неоновые шары и блочные глифы'],
+    ribbon: ['Розовая', 'розовая ёлка с яркой лентой и жемчужными шарами'],
+  };
+  function label(key) { return LABELS[key] || [engine.V[key] ? engine.V[key].short : key, '']; }
   var DEMO = 'https://xmasqr.vercel.app/?tree=classic'; // the tree that grows before you paste anything
 
   var params = new URLSearchParams(location.search);
@@ -71,9 +85,10 @@
       b.className = 'chip';
       b.dataset.tree = key;
       b.setAttribute('aria-pressed', 'false');
-      b.title = v.name + ' — ' + (v.blurb || '');
+      var L = label(key);
+      b.title = L[0] + (L[1] ? ' — ' + L[1] : '');
       b.innerHTML = '<span class="dot" style="--c:' + (v.leaf && v.leaf[1] || '#888') + '"></span>' +
-        '<span class="chip-label">' + v.short + '</span>';
+        '<span class="chip-label">' + L[0] + '</span>';
       b.addEventListener('click', function () { pickTree(key); });
       treesBox.appendChild(b);
     });
@@ -82,14 +97,13 @@
     [].forEach.call(treesBox.children, function (b) {
       b.setAttribute('aria-pressed', b.dataset.tree === state.tree ? 'true' : 'false');
     });
-    var v = engine.V[state.tree];
-    if (v) treeName.textContent = v.short;
+    treeName.textContent = label(state.tree)[0];
   }
 
   // ---------------------------------------------------------------- camera
   function setHint() {
-    if (!hasLink()) { hint.textContent = 'Paste a link to grow your own'; return; }
-    hint.textContent = state.camTarget > 0.5 ? 'Tap the tree to see QR code' : 'Tap the code to grow the tree';
+    if (!hasLink()) { hint.textContent = 'Вставьте ссылку, чтобы вырастить свою'; return; }
+    hint.textContent = state.camTarget > 0.5 ? 'Нажмите на ёлку, чтобы увидеть QR-код' : 'Нажмите на код, чтобы вырастить ёлку';
   }
   function pickTree(key) {
     state.tree = key;
@@ -101,7 +115,7 @@
     var next = urlInput.value.trim();
     if (next === state.link) return;
     state.link = next;
-    if (!next) { hint.textContent = 'Paste a link to grow your own'; pushURL(); return; }
+    if (!next) { hint.textContent = 'Вставьте ссылку, чтобы вырастить свою'; pushURL(); return; }
     // a new link: the code re-assembles and the tree grows back out of it
     state.drop = reduced ? 1 : 0;
     state.grown = reduced ? 1 : 0;
@@ -212,13 +226,13 @@
     a.download = 'christmas-qr.png';
     a.href = out.toDataURL('image/png');
     a.click();
-    toast('QR saved');
+    toast('QR-код сохранён');
   }
 
   function embedSnippet() {
     var src = shareURL().replace('?', '?embed=1&');
     if (src.indexOf('?') < 0) src += '?embed=1';
-    return '<iframe src="' + src + '" title="Christmas QR" ' +
+    return '<iframe src="' + src + '" title="Christmas QR — ёлка из QR-кода" ' +
       'style="width:360px;height:480px;border:0;border-radius:16px;overflow:hidden" ' +
       'loading="lazy" allowtransparency="true"></iframe>';
   }
@@ -254,10 +268,10 @@
     if (!btn) return;
     var action = btn.dataset.action;
     var url = shareURL();
-    var text = 'This QR code grows into a Christmas tree';
+    var text = 'Этот QR-код вырастает в ёлку';
     closeMenu();
     if (action === 'copy') {
-      copyText(url).then(function () { toast('Link copied'); }, function () { toast('Copy failed'); });
+      copyText(url).then(function () { toast('Ссылка скопирована'); }, function () { toast('Не удалось скопировать'); });
     } else if (action === 'download') {
       downloadQR();
     } else if (action === 'embed') {
@@ -274,15 +288,15 @@
   // share sheet first, clipboard as the fallback
   function sendTree() {
     var url = shareURL();
-    var data = { title: 'Christmas QR', text: 'This QR code grows into a Christmas tree', url: url };
+    var data = { title: 'Christmas QR', text: 'Этот QR-код вырастает в ёлку', url: url };
     if (navigator.share) { navigator.share(data).catch(function () {}); return; }
-    copyText(url).then(function () { toast('Link copied — send it to a friend'); }, function () { toast(url); });
+    copyText(url).then(function () { toast('Ссылка скопирована — отправьте её другу'); }, function () { toast(url); });
   }
 
   // ----------------------------------------------------------------- panel
   $('embed-open').addEventListener('click', openEmbed);
   $('embed-copy').addEventListener('click', function () {
-    copyText(embedCode.value).then(function () { toast('Embed code copied'); }, function () { toast('Copy failed'); });
+    copyText(embedCode.value).then(function () { toast('Код для вставки скопирован'); }, function () { toast('Не удалось скопировать'); });
   });
   $('embed-close').addEventListener('click', closeEmbed);
   embedSheet.addEventListener('click', function (e) { if (e.target === embedSheet) closeEmbed(); });
@@ -325,7 +339,7 @@
     requestAnimationFrame(step);
   }
 
-  if (!hasLink()) setTimeout(function () { if (!hasLink()) toast('Paste a link, pick a tree'); }, 1400);
+  if (!hasLink()) setTimeout(function () { if (!hasLink()) toast('Вставьте ссылку и выберите ёлку'); }, 1400);
 
   // a small surface for the checks in scripts/
   window.__qrTree = {
