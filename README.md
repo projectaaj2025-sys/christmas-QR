@@ -23,21 +23,32 @@ npm run verify   # scan + embed + receive checks, no browser needed
 
 ## How the tree works
 
-Every dark module of the QR code becomes a blossom. While the tree is standing, blossoms float on
-the branch skirts of a spruce silhouetted from the seed of the payload; tap the tree and each one
-falls onto its own module, the snow brightens, and the platform becomes a plain, scannable code.
-Tap again and the tree grows back — both directions are reversible mid-flight.
+Every dark module of the QR code becomes one **character** of the canopy — `#`, `%`, `@`, `*`,
+`o`, hearts and flowers, the way the original draws it. Each character is mapped onto a scalloped
+spruce cone: its row picks the height, its column picks the side, so the code's own pattern decides
+where the tree looks dense or thin. A warm bloom sits behind the crown and gold flecks catch the
+light near the top.
 
-Two details make it actually scan:
+Tap the tree and every character leaves its branch, drifts, and lands exactly on its module, where
+it turns into a solid tile. Tap again and the tree grows back — both directions are reversible
+mid-flight.
+
+Four details make it actually scan:
 
 - **Integer-aligned modules.** The flat code is laid out at a whole-pixel cell size and every
   landed module is snapped to the pixel grid. Fractional module edges are the usual reason a
   pretty QR code fails on a phone.
-- **Error correction `M` with a full quiet zone**, so the ornaments that are still in the air
-  during the tween, or a thumb over one corner, do not break the read.
+- **Two inks per glyph.** The colour a character shows on the branch is separate from the colour
+  it uses once flat, so light palettes (Silver, Lace) never paint white modules onto white snow.
+- **A plaza that floods with light.** The flat code starts out as coloured modules on a dark
+  plaza — as in the original — then the plaza fades to snow and the modules invert past the
+  halfway point of the morph, keeping the code darker than its background either way.
+- **Error correction `M`** (dropping to `L` past ~180 characters) with a full quiet zone, so a
+  thumb over one corner or a glyph still in the air does not break the read.
 
-`npm run verify` renders the flat frame at several sizes and decodes it with jsQR, which is the
-same sanity check CI would run.
+`npm run verify` renders the flat frame for all ten palettes and several payloads, decodes each
+with jsQR, round-trips the whole "receive a tree" flow through the scanner, and checks the widget
+bundle.
 
 ## Sharing
 
@@ -80,7 +91,9 @@ If `u` is omitted, the code points back at the tree itself.
 | --- | --- |
 | `u` / `url` | payload behind the QR code |
 | `m` / `msg` | greeting shown on the card |
-| `t` / `tree` | `classic`, `aurora`, `candy`, `gold` |
+| `t` / `tree` | `classic`, `silver`, `blush`, `snowy`, `midnight`, `fairy`, `neon`, `lace`, `glitch`, `pink` |
+| `snow` | `0` turns the snowfall off |
+| `baubles` | `0` hides the ornaments |
 | `embed` | `1` hides the site chrome (for iframes) |
 | `view` | `code` starts on the flat code instead of the tree |
 
@@ -89,8 +102,8 @@ If `u` is omitted, the code points back at the tree itself.
 ```
 src/
   lib/qr.ts         QR encoding (UTF-8 payloads, EC level, SVG export)
-  lib/scene.ts      the canvas renderer: sky, snow, tree, morph
-  lib/looks.ts      the four tree palettes
+  lib/scene.ts      the canvas renderer: sky, glyph canopy, morph, flat code
+  lib/looks.ts      the ten palettes (canopy, baubles and flat-code inks)
   lib/urlState.ts   share-link parsing and building
   lib/export.ts     card PNG / code PNG / SVG / embed snippets
   lib/celebrate.ts  chime + confetti, no dependencies
