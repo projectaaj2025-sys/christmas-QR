@@ -13,6 +13,8 @@ interface Props {
   payload: string;
   message: string;
   onSend: (payload: string, message: string, kind?: Look['id']) => void;
+  snow?: boolean;
+  baubles?: boolean;
   incoming: Greeting[];
   addGreeting: (g: Greeting) => void;
 }
@@ -34,6 +36,8 @@ export function ShareDialog({
   onSend,
   incoming,
   addGreeting,
+  snow = true,
+  baubles = true,
 }: Props) {
   const [tab, setTab] = useState<Tab>('send');
   const [note, setNote] = useState(message);
@@ -77,8 +81,10 @@ export function ShareDialog({
         payload,
         message: note,
         from: from.trim() && from !== 'a friend' ? from.trim() : undefined,
+        snow,
+        baubles,
       }),
-    [look.id, payload, note, from],
+    [look.id, payload, note, from, snow, baubles],
   );
 
   // a friend's link is just this URL with their payload in it
@@ -187,7 +193,14 @@ export function ShareDialog({
         {tab === 'send' && (
           <section className="tab-panel">
             <div className="dialog-preview">
-              <Stage text={treeLink} look={look} caption={false} className="stage-sm" />
+              <Stage
+                text={treeLink}
+                look={look}
+                caption={false}
+                className="stage-sm"
+                snow={snow}
+                baubles={baubles}
+              />
             </div>
             <label className="field">
               <span>Your name (optional)</span>

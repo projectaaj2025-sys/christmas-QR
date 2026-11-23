@@ -27,19 +27,31 @@ const mod = await import(
   'data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64')
 );
 
+// palettes come from the app, so the test renders exactly what ships
+const looksBundle = await build({
+  entryPoints: ['src/lib/looks.ts'],
+  bundle: true,
+  format: 'esm',
+  write: false,
+  platform: 'browser',
+  mainFields: ['module', 'main'],
+});
+const { KINDS, TREE_KINDS } = await import(
+  'data:text/javascript;base64,' + Buffer.from(looksBundle.outputFiles[0].text).toString('base64')
+);
+
 let failures = 0;
 for (const text of cases) {
-  for (const look of ['classic', 'aurora', 'candy', 'gold']) {
-    const { KINDS } = await import('../src/lib/looks.ts').catch(() => ({ KINDS: null }));
-    const palettes = KINDS ?? (await import('../src/lib/looks.ts')).KINDS;
+  for (const look of TREE_KINDS) {
     const canvas = createCanvas(1200, 900);
     const ctx = canvas.getContext('2d');
     mod.drawScene(ctx, 1200, 900, {
       text,
-      look: palettes[look],
+      look: KINDS[look],
       morph: 1,
       time: 4,
       snowfall: 1,
+      baubles: true,
     });
     const img = ctx.getImageData(0, 0, 1200, 900);
     const found = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });

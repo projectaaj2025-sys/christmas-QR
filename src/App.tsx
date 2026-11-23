@@ -18,11 +18,14 @@ export default function App() {
   const [payload, setPayload] = useState(initial.url);
   const [message, setMessage] = useState(initial.message);
   const [kind, setKind] = useState<TreeKind>(initial.kind);
+  const [snow, setSnow] = useState(initial.snow);
+  const [baubles, setBaubles] = useState(initial.baubles);
   const [shareOpen, setShareOpen] = useState(false);
   const [embedOpen, setEmbedOpen] = useState(false);
   const [incoming, setIncoming] = useState<Greeting[]>(() => loadGreetings());
   const [notice, setNotice] = useState('');
   const [celebrate, setCelebrate] = useState(false);
+  const [draft, setDraft] = useState('');
 
   const look = KINDS[kind];
 
@@ -32,10 +35,11 @@ export default function App() {
       kind,
       payload: payload === DEFAULT_URL ? undefined : payload,
       message,
-      view: undefined,
+      snow,
+      baubles,
     });
     window.history.replaceState(null, '', link);
-  }, [kind, payload, message]);
+  }, [kind, payload, message, snow, baubles]);
 
   useEffect(() => {
     document.documentElement.style.setProperty('--accent', look.accent);
@@ -49,28 +53,39 @@ export default function App() {
     });
   }, []);
 
-  const receiveFromUrl = useCallback(
-    (url: string, note: string, nextKind?: TreeKind) => {
-      setPayload(url);
-      setMessage(note);
-      if (nextKind) setKind(nextKind);
-      setShareOpen(false);
-      setCelebrate(true);
-      setNotice('Your tree is ready — tap it to see the code.');
-      setTimeout(() => setNotice(''), 4200);
-    },
-    [],
-  );
+  const receiveFromUrl = useCallback((url: string, note: string, nextKind?: TreeKind) => {
+    setPayload(url);
+    setMessage(note);
+    if (nextKind) setKind(nextKind);
+    setShareOpen(false);
+    setCelebrate(true);
+    setNotice('Your tree is ready — tap it to see the code.');
+    setTimeout(() => setNotice(''), 4200);
+  }, []);
 
   const stageText = useMemo(
-    () => buildLink({ kind, payload, message }),
-    [kind, payload, message],
+    () => buildLink({ kind, payload, message, snow, baubles }),
+    [kind, payload, message, snow, baubles],
   );
+
+  const applyLink = () => {
+    const value = draft.trim();
+    if (!value) return;
+    setPayload(value);
+    setDraft('');
+  };
 
   if (initial.embed) {
     return (
       <main className="embed-shell">
-        <Stage text={stageText} look={look} caption className="stage-embed" />
+        <Stage
+          text={stageText}
+          look={look}
+          caption
+          snow={snow}
+          baubles={baubles}
+          className="stage-embed"
+        />
         <a
           className="embed-credit"
           href={buildLink({ kind, payload, message })}
@@ -88,142 +103,123 @@ export default function App() {
       <header className="topbar">
         <a className="brand" href="/">
           <span className="brand-mark" aria-hidden="true">
-            ✦
+            ✳
           </span>
           christmas qr
         </a>
-        <nav className="topbar-actions">
+        <div className="topbar-actions">
+          <button type="button" className="btn btn-ghost" onClick={() => setShareOpen(true)}>
+            Share
+          </button>
           <button type="button" className="btn btn-ghost" onClick={() => setEmbedOpen(true)}>
             Embed
           </button>
+        </div>
+      </header>
+
+      <main className="stage-area">
+        <Stage
+          text={stageText}
+          look={look}
+          snow={snow}
+          baubles={baubles}
+          startFlat={initial.startFlat}
+          caption
+          celebrate={celebrate}
+          className="stage-main"
+        />
+        {notice && <p className="toast floating">{notice}</p>}
+      </main>
+
+      <aside className="panel">
+        <div className="panel-block">
+          <div className="link-row">
+            <input
+              value={draft}
+              spellCheck={false}
+              maxLength={300}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && applyLink()}
+              placeholder="Paste a link"
+              aria-label="Link behind the QR code"
+            />
+            <button type="button" className="btn-send" onClick={applyLink} aria-label="Grow the tree">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path
+                  d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+          <div className="samples">
+            {SAMPLES.map((s) => (
+              <button key={s.label} type="button" className="chip" onClick={() => setPayload(s.value)}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+          <code className="payload mono" title={payload}>
+            {payload}
+          </code>
+        </div>
+
+        <div className="panel-block">
+          <p className="panel-label">Tree</p>
+          <div className="palettes" role="radiogroup" aria-label="Tree palette">
+            {TREE_KINDS.map((id) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={kind === id}
+                aria-label={KINDS[id].name}
+                className={kind === id ? 'palette is-active' : 'palette'}
+                onClick={() => setKind(id)}
+              >
+                <span
+                  className="palette-dot"
+                  aria-hidden="true"
+                  style={{
+                    background: `radial-gradient(circle at 32% 28%, ${KINDS[id].swatch[0]}, ${KINDS[id].swatch[1]} 70%)`,
+                  }}
+                />
+                <span className="palette-name">{KINDS[id].name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel-block toggles">
+          <Toggle label="Snow" checked={snow} onChange={setSnow} glyph="❄" />
+          <Toggle label="Baubles" checked={baubles} onChange={setBaubles} glyph="●" />
+        </div>
+
+        <div className="panel-block">
+          <label className="field tight">
+            <span>Greeting</span>
+            <input
+              value={message}
+              maxLength={140}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="С Новым годом! 🎄"
+            />
+          </label>
+        </div>
+
+        <div className="panel-foot">
+          <span className="credit">
+            made with <strong>christmas qr</strong>
+          </span>
           <button type="button" className="btn btn-primary" onClick={() => setShareOpen(true)}>
             Send a tree
           </button>
-        </nav>
-      </header>
-
-      <main className="layout">
-        <section className="hero">
-          <h1>
-            Your link, <em>grown</em> into a tree.
-          </h1>
-          <p className="lede">
-            Every branch is a module of a real, scannable QR code. Tap the tree, the ornaments fall
-            into the code, and any phone can read it.
-          </p>
-
-          <div className="controls">
-            <label className="field">
-              <span>Link or text behind the code</span>
-              <input
-                value={payload}
-                spellCheck={false}
-                maxLength={300}
-                onChange={(e) => setPayload(e.target.value || ' ')}
-                placeholder="https://…"
-              />
-            </label>
-            <div className="samples">
-              {SAMPLES.map((s) => (
-                <button key={s.label} type="button" className="chip" onClick={() => setPayload(s.value)}>
-                  {s.label}
-                </button>
-              ))}
-            </div>
-
-            <label className="field">
-              <span>Greeting (optional)</span>
-              <input
-                value={message}
-                maxLength={140}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="С Новым годом! 🎄"
-              />
-            </label>
-
-            <div className="trees" role="radiogroup" aria-label="Tree style">
-              {TREE_KINDS.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="radio"
-                  aria-checked={kind === id}
-                  className={kind === id ? 'tree-chip is-active' : 'tree-chip'}
-                  onClick={() => setKind(id)}
-                  style={{ '--swatch': KINDS[id].accent } as React.CSSProperties}
-                >
-                  <span className="swatch" aria-hidden="true" />
-                  <span>
-                    <strong>{KINDS[id].name}</strong>
-                    <small>{KINDS[id].blurb}</small>
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="actions">
-              <button type="button" className="btn btn-primary btn-lg" onClick={() => setShareOpen(true)}>
-                Send my tree
-              </button>
-              <button type="button" className="btn btn-ghost btn-lg" onClick={() => setEmbedOpen(true)}>
-                Put it on my site
-              </button>
-            </div>
-            {notice && <p className="toast inline">{notice}</p>}
-          </div>
-
-          <ul className="facts">
-            <li>
-              <strong>Scan-tested.</strong> Modules are pixel aligned, so phones lock on instantly.
-            </li>
-            <li>
-              <strong>Deterministic.</strong> The same link always grows the same tree.
-            </li>
-            <li>
-              <strong>Shareable.</strong> Send the tree itself, or invite a friend to grow one for
-              you.
-            </li>
-          </ul>
-        </section>
-
-        <section className="stage-column">
-          <Stage
-            text={stageText}
-            look={look}
-            startFlat={initial.startFlat}
-            caption
-            celebrate={celebrate}
-          />
-          <div className="under-stage">
-            <code className="mono">{stageText}</code>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(stageText);
-                  setNotice('Link copied');
-                } catch {
-                  setNotice('Copy failed — the link is printed on the left');
-                }
-                setTimeout(() => setNotice(''), 2500);
-              }}
-            >
-              Copy link
-            </button>
-          </div>
-        </section>
-      </main>
-
-      <footer className="footer">
-        <p>
-          Built in the spirit of the original christmas qr tree. No tracking, no account — every
-          tree is drawn in your browser.
-        </p>
-        <p className="muted small">
-          Inbox: {incoming.length === 0 ? 'no trees received yet' : `${incoming.length} tree(s) received`}
-        </p>
-      </footer>
+        </div>
+      </aside>
 
       <ShareDialog
         open={shareOpen}
@@ -234,6 +230,8 @@ export default function App() {
         onSend={receiveFromUrl}
         incoming={incoming}
         addGreeting={addGreeting}
+        snow={snow}
+        baubles={baubles}
       />
       <EmbedDialog
         open={embedOpen}
@@ -241,7 +239,39 @@ export default function App() {
         look={look}
         payload={payload}
         message={message}
+        snow={snow}
+        baubles={baubles}
       />
     </div>
+  );
+}
+
+function Toggle({
+  label,
+  checked,
+  onChange,
+  glyph,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  glyph: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      className={checked ? 'toggle is-on' : 'toggle'}
+      onClick={() => onChange(!checked)}
+    >
+      <span className="toggle-track" aria-hidden="true">
+        <span className="toggle-knob" />
+      </span>
+      <span className="toggle-glyph" aria-hidden="true">
+        {glyph}
+      </span>
+      {label}
+    </button>
   );
 }

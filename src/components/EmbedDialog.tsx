@@ -10,6 +10,8 @@ interface Props {
   look: Look;
   payload: string;
   message: string;
+  snow?: boolean;
+  baubles?: boolean;
 }
 
 const SIZES = [
@@ -19,7 +21,7 @@ const SIZES = [
 ];
 
 /** Everything needed to drop the tree into somebody else's site. */
-export function EmbedDialog({ open, onClose, look, payload, message }: Props) {
+export function EmbedDialog({ open, onClose, look, payload, message, snow, baubles }: Props) {
   const [sizeIndex, setSizeIndex] = useState(0);
   const [tab, setTab] = useState<'iframe' | 'script' | 'data-uri'>('iframe');
   const [status, setStatus] = useState('');
@@ -28,8 +30,8 @@ export function EmbedDialog({ open, onClose, look, payload, message }: Props) {
   const origin = typeof window === 'undefined' ? '' : window.location.origin;
 
   const embedUrl = useMemo(
-    () => buildLink({ kind: look.id, payload, message, embed: true }),
-    [look.id, payload, message],
+    () => buildLink({ kind: look.id, payload, message, embed: true, snow, baubles }),
+    [look.id, payload, message, snow, baubles],
   );
 
   const snippet = useMemo(() => {
@@ -68,7 +70,14 @@ export function EmbedDialog({ open, onClose, look, payload, message }: Props) {
 
         <div className="embed-grid">
           <div className="embed-preview">
-            <Stage text={embedUrl} look={look} caption className="stage-sm" />
+            <Stage
+              text={embedUrl}
+              look={look}
+              caption
+              className="stage-sm"
+              snow={snow}
+              baubles={baubles}
+            />
             <p className="muted small">
               This is exactly what visitors see inside the frame — they can tap it too.
             </p>

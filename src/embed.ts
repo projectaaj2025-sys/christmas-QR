@@ -28,6 +28,8 @@ import { buildLink } from './lib/urlState';
   // what the QR code encodes: a tree page on the host, or the payload itself
   const payload = params.get('u') ?? `${hosted}/?t=${kind}`;
   const look = lookFor(kind);
+  const snow = params.get('snow') !== '0';
+  const baubles = params.get('baubles') !== '0';
   const requested = Number(params.get('h'));
   const height = Number.isFinite(requested) && requested > 160 ? requested : 520;
 
@@ -126,7 +128,8 @@ import { buildLink } from './lib/urlState';
       look,
       morph,
       time: reduced ? 0 : (now - start) / 1000,
-      snowfall: reduced ? 0 : 1,
+      snowfall: reduced || !snow ? 0 : 1,
+      baubles,
     });
     requestAnimationFrame(frame);
   };

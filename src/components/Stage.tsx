@@ -5,6 +5,10 @@ import { chime, confetti } from '../lib/celebrate';
 interface StageProps {
   text: string;
   look: SceneLook;
+  /** falling snow in the scene */
+  snow?: boolean;
+  /** ornaments among the canopy glyphs */
+  baubles?: boolean;
   /** force the flat code (used while exporting / deep links) */
   startFlat?: boolean;
   caption?: boolean;
@@ -26,6 +30,8 @@ const TWEEN_MS = 2600;
 export function Stage({
   text,
   look,
+  snow = true,
+  baubles = true,
   startFlat,
   caption = true,
   className,
@@ -129,7 +135,8 @@ export function Stage({
         look,
         morph: current.current,
         time: reduced ? 0 : time,
-        snowfall: reduced ? 0 : 1,
+        snowfall: reduced || !snow ? 0 : 1,
+        baubles,
       });
       raf = requestAnimationFrame(frame);
     };
@@ -140,7 +147,7 @@ export function Stage({
       io.disconnect();
       ro.disconnect();
     };
-  }, [text, look, reduced]);
+  }, [text, look, reduced, snow, baubles]);
 
   const hint = flat ? 'Tap the snow to grow the tree back' : 'Tap the tree to see the QR code';
 

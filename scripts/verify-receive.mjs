@@ -55,6 +55,7 @@ for (const [i, c] of cases.entries()) {
     morph: 1,
     time: 3,
     snowfall: 0,
+    baubles: false,
   });
   // a screenshot is smaller than the stage: this is what a friend would paste
   const shot = createCanvas(900, 675);

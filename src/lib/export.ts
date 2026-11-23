@@ -45,6 +45,7 @@ export async function renderCard(opts: {
     morph: 0,
     time: 2.5,
     snowfall: 1,
+    baubles: true,
   });
   ctx.restore();
 
@@ -76,7 +77,7 @@ export async function renderCard(opts: {
   const codeSize = cell * n;
   const codeX = Math.round(tileX + (tile - codeSize) / 2);
   const codeY = Math.round(tileY + (tile - codeSize) / 2);
-  ctx.fillStyle = opts.look.module;
+  ctx.fillStyle = opts.look.structure;
   for (let r = 0; r < n; r += 1) {
     for (let c = 0; c < n; c += 1) {
       if (grid[r][c]) ctx.fillRect(codeX + c * cell, codeY + r * cell, cell, cell);
@@ -132,6 +133,7 @@ export function downloadPng(text: string, look: SceneLook, filename: string) {
     morph: 1,
     time: 3,
     snowfall: 0,
+    baubles: false,
   });
   canvas.toBlob((blob) => blob && download(blob, `${slug(filename)}-qr.png`), 'image/png');
 }

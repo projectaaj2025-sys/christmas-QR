@@ -12,6 +12,9 @@ export interface AppState {
   startFlat: boolean;
   /** who sent this tree */
   from: string;
+  /** scene toggles */
+  snow: boolean;
+  baubles: boolean;
 }
 
 export const DEFAULT_URL = 'https://xmasqr.vercel.app/';
@@ -36,6 +39,8 @@ export function readState(search = window.location.search): AppState {
     embed: params.get('embed') === '1' || params.get('embed') === 'true',
     startFlat: params.get('view') === 'code' || params.get('flat') === '1',
     from: first(params, 'from', 'f').slice(0, 40),
+    snow: params.get('snow') !== '0' && params.get('snow') !== 'false',
+    baubles: params.get('baubles') !== '0' && params.get('baubles') !== 'false',
   };
 }
 
@@ -48,6 +53,9 @@ export interface LinkOptions {
   payload?: string;
   /** sender's name, shown to whoever opens the tree */
   from?: string;
+  /** omit to keep the defaults (both on) */
+  snow?: boolean;
+  baubles?: boolean;
 }
 
 /** Canonical tree link. Short keys keep the QR payload small. */
@@ -61,6 +69,8 @@ export function buildLink(o: LinkOptions, base?: string): string {
   if (o.embed) params.set('embed', '1');
   if (o.view === 'code') params.set('view', 'code');
   if (o.from?.trim()) params.set('from', o.from.trim());
+  if (o.snow === false) params.set('snow', '0');
+  if (o.baubles === false) params.set('baubles', '0');
   return `${origin.replace(/\/+$/, '/')}?${params.toString()}`;
 }
 
