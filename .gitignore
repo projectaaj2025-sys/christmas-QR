@@ -1,0 +1,5 @@
+node_modules
+dist
+.arena
+.DS_Store
+*.log
