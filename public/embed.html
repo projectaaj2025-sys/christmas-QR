@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Christmas QR — embed</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0D0D0F; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas id="tree" aria-label="QR code that grows into a Christmas tree"></canvas>
+<script src="js/tree-engine.js?v=22"></script>
+<script>
+// Drop-in widget: <iframe src="https://your.site/embed.html?link=…&tree=classic">
+// The camera cycles on its own so the code is readable, then the tree stands up.
+(function () {
+  var engine = window.QRTree;
+  var canvas = document.getElementById('tree');
+  var ctx = canvas.getContext('2d');
+  var q = new URLSearchParams(location.search);
+  var link = (q.get('link') || q.get('u') || 'https://xmasqr.vercel.app/').slice(0, 600);
+  var key = q.get('tree') || q.get('t') || 'classic';
+  if (key !== 'plain' && !engine.V[key]) key = 'classic';
+  if (q.get('link') === '' || q.get('u') === '') link = '';
+  var snow = q.get('snow') !== '0', baubles = q.get('baubles') !== '0';
+  var autoplay = q.get('play') !== '0';
+  var reduced = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var view = { w: 0, h: 0, dpr: 1, fs: 8 };
+
+  function fit() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    view.w = canvas.clientWidth || window.innerWidth;
+    view.h = canvas.clientHeight || window.innerHeight;
+    view.dpr = dpr;
+    canvas.width = Math.round(view.w * dpr);
+    canvas.height = Math.round(view.h * dpr);
+    view.fs = view.w < 420 ? 5 : view.w < 720 ? 6 : 8;
+    if (view.w > 1400) view.fs = 10;
+  }
+  window.addEventListener('resize', fit); fit();
+
+  var t0 = performance.now();
+  function step(now) {
+    var t = (now - t0) / 1000;
+    var cam = 1;
+    if (!link) cam = 0;
+    else if (autoplay && !reduced) cam = engine.cycle(t, 22).cam;
+    engine.draw(ctx, view.w, view.h, link || ' ', key, {
+      cam: cam,
+      grow: 1,
+      drop: 1,
+      time: reduced ? 0 : t,
+      dpr: view.dpr,
+      fs: view.fs,
+      fill: view.w < 720 ? 0.78 : 0.84,
+      fall: snow,
+      baubles: baubles,
+      plate: 'none',
+      treeDrop: 0.02,
+      maxPts: view.w < 520 ? 26000 : undefined,
+    });
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+})();
+</script>
+</body>
+</html>
