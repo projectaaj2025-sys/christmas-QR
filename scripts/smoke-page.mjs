@@ -46,7 +46,7 @@ check(window.location.search.includes('link=https%3A%2F%2Fexample.com%2Fhello'),
 // pick a tree from the picker
 doc.querySelector('#trees .chip[data-tree="fairy"]').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 check(api.state.tree === 'fairy', 'clicking a chip picks that tree');
-check(doc.getElementById('tree-name').textContent === 'Fairy', 'the tree name is shown');
+check(doc.getElementById('tree-name').textContent === 'Сказочная', 'the tree name is shown');
 
 // share menu opens and offers every action
 const share = doc.getElementById('share');
