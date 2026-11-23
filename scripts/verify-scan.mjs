@@ -1,67 +1,58 @@
-// Renders the scene headlessly and decodes the flat-code frame with jsQR.
-//   node scripts/verify-scan.mjs [payload...]
-import { createCanvas } from '@napi-rs/canvas';
-import jsQR from 'jsqr';
-import { build } from 'esbuild';
+// Renders the flat frame exactly as the page does and decodes it with jsQR —
+// once at the browser's own pixels and once downscaled to what a camera captures.
+//   node scripts/verify-scan.mjs
+import { createCanvas, GlobalFonts } from '@napi-rs/canvas';
+import jsQRmod from 'jsqr';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
 
-const payloads = process.argv.slice(2);
-const cases =
-  payloads.length > 0
-    ? payloads
-    : [
-        'https://xmasqr.vercel.app/?tree=classic',
-        'https://example.com/gift/2026?from=santa&note=с-наступающим-новым-годом',
-        'С Новым годом! 🎄 Спасибо, что были рядом весь год.',
-        'a'.repeat(180),
-      ];
+const jsQR = jsQRmod.default ?? jsQRmod;
+const sandbox = { window: {} };
+vm.createContext(sandbox);
+vm.runInContext(readFileSync('public/js/tree-engine.js', 'utf8'), sandbox);
+const engine = sandbox.window.QRTree;
+if (!engine) throw new Error('engine did not load');
+try { GlobalFonts.registerFromPath('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf', 'DejaVuSansMono'); } catch { /* default font is fine */ }
 
-const bundle = await build({
-  entryPoints: ['src/lib/scene.ts'],
-  bundle: true,
-  format: 'esm',
-  write: false,
-  platform: 'browser',
-  mainFields: ['module', 'main'],
-});
-const mod = await import(
-  'data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64')
-);
+const KEYS = ['plain', ...engine.KEYS, ...engine.EXTRA_KEYS];
+const PAYLOADS = [
+  'https://xmasqr.vercel.app/?tree=classic',
+  'https://hh.kz/vacancy/12345678',
+  'С Новым годом! 🎄 Спасибо, что были рядом весь год.',
+  'https://example.com/?q=' + 'x'.repeat(160),
+];
+const VIEWS = [
+  ['desktop', 1000, 700, 8, 0.86],
+  ['phone', 390, 600, 6, 0.94],
+];
 
-// palettes come from the app, so the test renders exactly what ships
-const looksBundle = await build({
-  entryPoints: ['src/lib/looks.ts'],
-  bundle: true,
-  format: 'esm',
-  write: false,
-  platform: 'browser',
-  mainFields: ['module', 'main'],
-});
-const { KINDS, TREE_KINDS } = await import(
-  'data:text/javascript;base64,' + Buffer.from(looksBundle.outputFiles[0].text).toString('base64')
-);
-
-let failures = 0;
-for (const text of cases) {
-  for (const look of TREE_KINDS) {
-    const canvas = createCanvas(1200, 900);
-    const ctx = canvas.getContext('2d');
-    mod.drawScene(ctx, 1200, 900, {
-      text,
-      look: KINDS[look],
-      morph: 1,
-      time: 4,
-      snowfall: 1,
-      baubles: true,
-    });
-    const img = ctx.getImageData(0, 0, 1200, 900);
-    const found = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
-    const ok = found?.data === text;
-    if (!ok) failures += 1;
-    console.log(
-      `${ok ? 'PASS' : 'FAIL'} ${look.padEnd(8)} len=${String(text.length).padStart(3)} ` +
-        `${ok ? '' : `decoded=${JSON.stringify(found?.data ?? null)}`}`,
-    );
-  }
+function decodeAt(canvas, target) {
+  const k = Math.min(1, target / Math.max(canvas.width, canvas.height));
+  const small = createCanvas(Math.round(canvas.width * k), Math.round(canvas.height * k));
+  const sctx = small.getContext('2d');
+  sctx.imageSmoothingQuality = 'high';
+  sctx.drawImage(canvas, 0, 0, small.width, small.height);
+  const img = sctx.getImageData(0, 0, small.width, small.height);
+  return jsQR(img.data, small.width, small.height, { inversionAttempts: 'attemptBoth' })?.data;
 }
-console.log(failures === 0 ? '\nall frames decode' : `\n${failures} frame(s) failed`);
-process.exit(failures === 0 ? 0 : 1);
+
+let fail = 0;
+for (const [name, w, h, fs, fill] of VIEWS) {
+  let ok = 0, total = 0;
+  for (const text of PAYLOADS) for (const key of KEYS) {
+    const canvas = createCanvas(w, h);
+    const ctx = canvas.getContext('2d');
+    engine.draw(ctx, w, h, text, key, {
+      cam: 0, grow: key === 'plain' ? 0.001 : 1, drop: 1, time: 0, dpr: 1, fs, fill,
+      fall: false, baubles: true, plate: 'none', clean: true,
+    });
+    total += 1;
+    const native = decodeAt(canvas, Math.min(w, h)) === text;
+    const capture = decodeAt(canvas, 640) === text;
+    if (native && capture) ok += 1;
+    else { fail += 1; console.log(`FAIL ${name} ${key} len=${text.length} native=${native} capture=${capture}`); }
+  }
+  console.log(`${ok === total ? 'PASS' : 'FAIL'} ${name.padEnd(8)} ${ok}/${total} frames decode`);
+}
+console.log(fail ? `\n${fail} frame(s) failed` : '\nall frames decode');
+process.exit(fail ? 1 : 0);

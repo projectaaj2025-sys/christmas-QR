@@ -1,119 +1,88 @@
 # christmas qr
 
-Turn any link into a Christmas tree that **is** a scannable QR code.
+A link turns into a Christmas tree that **is** a scannable QR code — and back again with a tap.
 
-A rebuild of the [xmasqr](https://xmasqr.vercel.app/?tree=classic) tree site, written from
-scratch in React + Canvas, with two extras on top of the original:
+This is a faithful rebuild of [xmasqr.vercel.app](https://xmasqr.vercel.app/?tree=classic):
+the same 3D ASCII point-cloud engine, the same page structure, the same ten trees. On top of the
+original it adds **share** and **embed**, so you can send your tree to someone and put it on a site.
 
-- **Send a tree** — share your own tree, invite a friend to grow one for you, or plant a tree
-  somebody sent by pasting a link or photographing its code.
-- **Embed anywhere** — an iframe snippet, a one-file `<script>` widget, or a direct link, so the
-  tree can live inside any site.
+```
+public/
+  index.html        the page: brand, hint, panel with the URL row, ten trees, snow / baubles
+  embed.html        the same tree as a standalone widget for <iframe>
+  styles.css        the original's tokens, panel, picker, switches, credits, toast
+  js/tree-engine.js the engine: QR encoder, 62k-point canopy, z-buffered glyph grid, camera
+  js/app.js         page logic: assemble → pick a tree → tilt up → tap to look down
+scripts/
+  verify-scan.mjs   renders the flat frame and decodes it with jsQR (every tree, phone + desktop)
+  verify-receive.mjs  jsdom: a shared link opens as a standing tree, share URL round-trips
+  verify-embed.mjs  jsdom: the widget cycles the camera on its own
+```
+
+No framework, no bundler step — the page is the same plain ES5 the original ships.
 
 ## Quick start
 
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm run build    # dist/ + dist/embed.js
-npm run verify   # scan + embed + receive checks, no browser needed
+npm run build    # static copy in dist/
+npm run verify   # scan + receive + embed checks, no browser needed
 ```
-
-![four tree styles](public/preview.png)
 
 ## How the tree works
 
-Every dark module of the QR code becomes one **character** of the canopy — `#`, `%`, `@`, `*`,
-`o`, hearts and flowers, the way the original draws it. Each character is mapped onto a scalloped
-spruce cone: its row picks the height, its column picks the side, so the code's own pattern decides
-where the tree looks dense or thin. A warm bloom sits behind the crown and gold flecks catch the
-light near the top.
+The engine builds one point per glyph. Every dark QR module is sampled for needle points inside a
+scalloped spruce cone: the module's position picks the tier radius, a jittered radius window keeps
+the surface loose, and each point carries a type — needle, bauble body, bauble cap, light, garland,
+snow cap, lace edge, trunk, ground. Each frame all points are rotated by the camera spin, tilted by
+the camera angle, perspective-divided and dropped into a **z-buffer of glyph cells**. One character
+per cell wins, the nearest — that is the whole 3D look: `#`, `%`, `*`, `+`, `=`, `o`, `O`, `♥`, `●`.
 
-Tap the tree and every character leaves its branch, drifts, and lands exactly on its module, where
-it turns into a solid tile. Tap again and the tree grows back — both directions are reversible
-mid-flight.
+- **camera** 0 → 1: straight down on the code, then tilted 80° to a side-on tree with a slow spin,
+  a ±10° sway and a shallow perspective.
+- **grow** 0 → 1: the canopy grows up out of the ground, point by point.
+- **drop** 0 → 1: the code reassembles from the centre out, finder squares landing as single blocks.
+- **star, baubles, snow, bloom**: a five-spike ASCII star above the crown, 44 spheres (or an even
+  scatter for the ribbon tree) with specular and rim shading, drifting flakes, and a blurred copy of
+  the frame composited with `lighter` for glow.
 
-Four details make it actually scan:
+## Why it still scans
 
-- **Integer-aligned modules.** The flat code is laid out at a whole-pixel cell size and every
-  landed module is snapped to the pixel grid. Fractional module edges are the usual reason a
-  pretty QR code fails on a phone.
-- **Two inks per glyph.** The colour a character shows on the branch is separate from the colour
-  it uses once flat, so light palettes (Silver, Lace) never paint white modules onto white snow.
-- **A plaza that floods with light.** The flat code starts out as coloured modules on a dark
-  plaza — as in the original — then the plaza fades to snow and the modules invert past the
-  halfway point of the morph, keeping the code darker than its background either way.
-- **Error correction `M`** (dropping to `L` past ~180 characters) with a full quiet zone, so a
-  thumb over one corner or a glyph still in the air does not break the read.
+- Looking down, `cam` is exactly 0, so every module is drawn as a **pixel-aligned square** in a
+  projected quad — no gaps, no fractional edges, no glyph strokes.
+- The flat state renders with `clean: true`, which drops the canopy glyphs, the star, snow and the
+  background field, leaving a clean code in the tree's colours.
+- The code is framed with `fill` chosen so even a 33-module payload keeps ≈5 px per module on a
+  390 px phone screen.
+- `scripts/verify-scan.mjs` decodes 96 frames — all ten trees × four payloads (up to 173 bytes,
+  Cyrillic + emoji) × desktop and phone — both at native size and downscaled to a 640 px capture.
 
-`npm run verify` renders the flat frame for all ten palettes and several payloads, decodes each
-with jsQR, round-trips the whole "receive a tree" flow through the scanner, and checks the widget
-bundle.
+## Sharing a tree
 
-## Sharing
+State lives in the URL: `?link=<your link>&tree=<palette>`, plus `snow=0` / `baubles=0`.
+Open such a link and the tree is already standing, in the sender's palette.
 
-| Flow | What happens |
-| --- | --- |
-| **Share my tree** | Builds `?t=<style>&u=<payload>&m=<greeting>`. Sends through the native share sheet, Telegram/WhatsApp, or the clipboard. Exports a card PNG, a plain code PNG or an SVG. |
-| **Invite a friend** | Sends a bare tree link. Your friend opens it, enters their own link, and sends the resulting tree back. |
-| **Receive a tree** | Paste a link, or upload a screenshot/photo of a QR code — jsQR reads it in the browser, no upload to a server. Received trees are kept in a local inbox (`localStorage`) and can be re-opened later, with the chime and confetti on first reveal. |
+- **Send a tree** — the native share sheet where it exists, a copied link everywhere else.
+- The share button in the panel offers copy, **Download QR** (a 1000 px PNG, rendered at 2000 px
+  and downscaled so edges stay crisp), X, Facebook and WhatsApp.
 
 ## Embedding
 
-**iframe** — `?embed=1` renders a chromeless tree that is itself tappable:
+The share menu's **Embed on a site** gives you:
 
 ```html
-<div style="max-width:720px;margin:0 auto">
-  <iframe
-    src="https://your-site/?t=classic&u=https%3A%2F%2Fexample.com&embed=1"
-    style="width:100%;height:640px;border:0;border-radius:18px"
-    loading="lazy"
-  ></iframe>
-</div>
+<iframe src="https://your.site/?embed=1&link=…&tree=classic" title="Christmas QR"
+        style="width:360px;height:480px;border:0;border-radius:16px;overflow:hidden"
+        loading="lazy"></iframe>
 ```
 
-**script widget** — one self-contained file, no framework needed on the host page:
+The widget hides the page furniture, cycles code → tilt → tree → back on a 24 s loop, and takes
+`tree`, `snow` and `baubles` from the URL too. `embed.html` answers with
+`Content-Security-Policy: frame-ancestors *` so it can live in any page.
 
-```html
-<div id="xmas-tree"></div>
-<script src="https://your-site/embed.js?t=aurora&u=https%3A%2F%2Fexample.com" async></script>
-```
+## Trees
 
-Query parameters: `t` (tree style), `u` (payload the code encodes), `m` (greeting), `embed=1`
-(chromeless), `view=code` (start flat), `mount` (placeholder id for the script widget), `h`
-(widget height).
-
-If `u` is omitted, the code points back at the tree itself.
-
-## URL parameters
-
-| Param | Meaning |
-| --- | --- |
-| `u` / `url` | payload behind the QR code |
-| `m` / `msg` | greeting shown on the card |
-| `t` / `tree` | `classic`, `silver`, `blush`, `snowy`, `midnight`, `fairy`, `neon`, `lace`, `glitch`, `pink` |
-| `snow` | `0` turns the snowfall off |
-| `baubles` | `0` hides the ornaments |
-| `embed` | `1` hides the site chrome (for iframes) |
-| `view` | `code` starts on the flat code instead of the tree |
-
-## Project layout
-
-```
-src/
-  lib/qr.ts         QR encoding (UTF-8 payloads, EC level, SVG export)
-  lib/scene.ts      the canvas renderer: sky, glyph canopy, morph, flat code
-  lib/looks.ts      the ten palettes (canopy, baubles and flat-code inks)
-  lib/urlState.ts   share-link parsing and building
-  lib/export.ts     card PNG / code PNG / SVG / embed snippets
-  lib/celebrate.ts  chime + confetti, no dependencies
-  lib/store.ts      local inbox
-  components/       Stage (canvas + tap), ShareDialog, EmbedDialog
-  embed.ts          the drop-in widget, built to dist/embed.js
-scripts/
-  verify-scan.mjs   headless render + jsQR decode
-  build-embed.mjs   bundles the widget as a single IIFE
-```
-
-Everything runs in the browser: no accounts, no analytics, no server calls. Trees are drawn on
-the fly, and the local inbox never leaves the device.
+`classic`, `silver` (`dots`), `blush`, `snowy` (`snow`), `midnight` (`blue`), `fairy`, `neon`,
+`lace`, `glitch`, `pink` (`ribbon`) — the palette ids stay the engine's (`snow`, `dots`, `ribbon`…),
+the picker shows the original's names and order.

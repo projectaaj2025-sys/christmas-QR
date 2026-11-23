@@ -1,5 +1,4 @@
 node_modules
 dist
-.arena
+.vercel
 .DS_Store
-*.log

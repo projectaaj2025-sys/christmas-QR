@@ -1,17 +1,11 @@
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 
+// The site is plain ES5 + a canvas engine, exactly like the original build:
+// no framework, no bundler step. Vite only serves and previews ./public.
 export default defineConfig({
-  plugins: [react()],
-  server: {
-    host: '0.0.0.0',
-    // the sandbox preview arrives through a proxy host, so accept any Host header
-    allowedHosts: true,
-    cors: true,
-  },
+  root: 'public',
+  publicDir: false,
+  server: { host: '0.0.0.0', allowedHosts: true, cors: true },
   preview: { host: '0.0.0.0', allowedHosts: true },
-  build: {
-    target: 'es2020',
-    assetsInlineLimit: 2048,
-  },
+  build: { outDir: '../dist', emptyOutDir: true },
 });
