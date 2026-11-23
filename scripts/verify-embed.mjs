@@ -9,8 +9,8 @@ const check = (ok, label, extra = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${label}${extra ? ' — ' + extra : ''}`);
 };
 
-const html = readFileSync('public/embed.html', 'utf8');
-const engineSrc = readFileSync('public/js/tree-engine.js', 'utf8');
+const html = readFileSync('embed.html', 'utf8');
+const engineSrc = readFileSync('js/tree-engine.js', 'utf8');
 
 function run(query) {
   const dom = new JSDOM(html, { url: 'https://example.test/embed.html' + query, runScripts: 'outside-only', pretendToBeVisual: true });

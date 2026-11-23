@@ -9,7 +9,7 @@ import vm from 'node:vm';
 const jsQR = jsQRmod.default ?? jsQRmod;
 const sandbox = { window: {} };
 vm.createContext(sandbox);
-vm.runInContext(readFileSync('public/js/tree-engine.js', 'utf8'), sandbox);
+vm.runInContext(readFileSync('js/tree-engine.js', 'utf8'), sandbox);
 const engine = sandbox.window.QRTree;
 if (!engine) throw new Error('engine did not load');
 try { GlobalFonts.registerFromPath('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf', 'DejaVuSansMono'); } catch { /* default font is fine */ }

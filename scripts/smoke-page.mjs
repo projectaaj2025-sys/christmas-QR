@@ -9,7 +9,7 @@ const check = (ok, label, extra = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${label}${extra ? ' — ' + extra : ''}`);
 };
 
-const dom = new JSDOM(readFileSync('public/index.html', 'utf8'), {
+const dom = new JSDOM(readFileSync('index.html', 'utf8'), {
   url: 'https://example.test/?link=https%3A%2F%2Fhh.kz%2Fvacancy%2F1&tree=classic',
   runScripts: 'dangerously',
   pretendToBeVisual: true,
@@ -28,7 +28,7 @@ window.HTMLCanvasElement.prototype.toDataURL = () => 'data:image/png;base64,';
 const doc = window.document;
 for (const src of ['js/tree-engine.js', 'js/app.js']) {
   const el = doc.createElement('script');
-  el.textContent = readFileSync('public/' + src, 'utf8');
+  el.textContent = readFileSync(src, 'utf8');
   doc.body.appendChild(el);
 }
 
