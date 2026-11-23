@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "node scripts/build.mjs",
     "preview": "vite preview",
-    "verify": "node scripts/verify-scan.mjs && node scripts/verify-embed.mjs && node scripts/verify-receive.mjs && node scripts/smoke-page.mjs"
+    "verify": "node scripts/verify-scan.mjs && node scripts/verify-embed.mjs && node scripts/verify-receive.mjs && node scripts/smoke-page.mjs && node scripts/verify-extras.mjs && node scripts/verify-recording.mjs"
   },
   "devDependencies": {
     "@napi-rs/canvas": "^0.1.80",

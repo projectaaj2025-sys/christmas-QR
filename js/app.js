@@ -229,6 +229,77 @@
     toast('QR-код сохранён');
   }
 
+  // ---------------------------------------------------------- animation
+  // A short film of one tree: standing -> tilts down -> the QR code, held long
+  // enough to scan. Nothing to install — it drives the same engine on an
+  // offscreen canvas and records that canvas.
+  var REC = { active: false, start: 0, hold: 1.6, tilt: 1.9, tail: 3.0 };
+  function recDuration() { return REC.hold + REC.tilt + REC.tail; }
+
+  function downloadAnimation() {
+    if (typeof window.MediaRecorder !== 'function' || !HTMLCanvasElement.prototype.captureStream) {
+      toast('Браузер не умеет записывать — попробуйте Chrome или Firefox');
+      return;
+    }
+    var mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
+      .filter(function (m) { return window.MediaRecorder.isTypeSupported && window.MediaRecorder.isTypeSupported(m); })[0];
+    if (!mime) { toast('Браузер не умеет записывать видео'); return; }
+
+    // square frames keep the tree and the code equally readable in a chat player
+    var side = Math.min(960, Math.round(Math.min(window.innerWidth, window.innerHeight) * 1.2));
+    var rec = document.createElement('canvas');
+    rec.width = rec.height = side;
+    var rctx = rec.getContext('2d');
+    var stream = rec.captureStream(30);
+    var chunks = [];
+    var mr;
+    try { mr = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6000000 }); }
+    catch (err) { toast('Не удалось начать запись'); return; }
+    mr.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+    mr.onstop = function () {
+      var blob = new Blob(chunks, { type: mime.split(';')[0] });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'christmas-qr.' + (mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm');
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      toast('Анимация сохранена');
+      REC.active = false;
+      document.body.classList.remove('is-recording');
+      reEnable();
+    };
+
+    REC.active = true;
+    REC.start = performance.now();
+    document.body.classList.add('is-recording');
+    var recordBtn = menu.querySelector('[data-action="record"]');
+    if (recordBtn) recordBtn.disabled = true;
+    var reEnable = function () { if (recordBtn) recordBtn.disabled = false; };
+    toast('Записываю анимацию — ' + Math.round(recDuration()) + ' с');
+    drawRecording(rctx, side, performance.now());
+    mr.start(200);
+    setTimeout(function () { if (mr.state !== 'inactive') mr.stop(); }, recDuration() * 1000 + 250);
+  }
+
+  // timeline: hold the finished tree, tilt down to the code, then hold the code
+  function drawRecording(rctx, side, now) {
+    if (!REC.active) return;
+    var t = (now - REC.start) / 1000;
+    var ease = engine.ease;
+    var cam = 1, tailBack = 0.9;
+    if (t < REC.hold) cam = 1;                                         // the tree, spinning
+    else if (t < REC.hold + REC.tilt) cam = 1 - ease((t - REC.hold) / REC.tilt); // tilt down to the code
+    else if (t < REC.hold + REC.tilt + REC.tail - tailBack) cam = 0;    // hold the code long enough to scan
+    else cam = ease((t - (recDuration() - tailBack)) / tailBack);       // ease back so the clip loops
+    engine.draw(rctx, side, side, payload(), state.tree, {
+      cam: cam, grow: 1, drop: 1, time: reduced ? 0 : t + 3.2,
+      dpr: 1, fs: side < 520 ? 6 : 8, fill: 0.88,
+      fall: snowBox.checked, baubles: baublesBox.checked,
+      plate: 'none', clean: true,
+    });
+    requestAnimationFrame(function (next) { drawRecording(rctx, side, next); });
+  }
+
   function embedSnippet() {
     var src = shareURL().replace('?', '?embed=1&');
     if (src.indexOf('?') < 0) src += '?embed=1';
@@ -262,6 +333,7 @@
     if (e.key !== 'Escape') return;
     closeMenu();
     if (!embedSheet.hidden) closeEmbed();
+    if (!licenceSheet.hidden) closeLicence();
   });
   menu.addEventListener('click', function (e) {
     var btn = e.target.closest('button[data-action]');
@@ -274,6 +346,8 @@
       copyText(url).then(function () { toast('Ссылка скопирована'); }, function () { toast('Не удалось скопировать'); });
     } else if (action === 'download') {
       downloadQR();
+    } else if (action === 'record') {
+      downloadAnimation();
     } else if (action === 'embed') {
       openEmbed();
     } else if (action === 'x') {
@@ -294,6 +368,20 @@
   }
 
   // ----------------------------------------------------------------- panel
+  // "ссылка сразу с ёлкой": hand over the exact URL that opens as a standing tree
+  $('tree-link').addEventListener('click', function () {
+    var url = shareURL();
+    copyText(url).then(function () { toast('Ссылка с ёлкой скопирована — откройте её у получателя'); },
+      function () { toast(url); });
+  });
+
+  var licenceSheet = $('licence');
+  function openLicence() { licenceSheet.hidden = false; licenceSheet.querySelector('.btn-ghost').focus(); }
+  function closeLicence() { licenceSheet.hidden = true; }
+  $('licence-open').addEventListener('click', openLicence);
+  $('licence-close').addEventListener('click', closeLicence);
+  licenceSheet.addEventListener('click', function (e) { if (e.target === licenceSheet) closeLicence(); });
+
   $('embed-open').addEventListener('click', openEmbed);
   $('embed-copy').addEventListener('click', function () {
     copyText(embedCode.value).then(function () { toast('Код для вставки скопирован'); }, function () { toast('Не удалось скопировать'); });
@@ -345,5 +433,6 @@
   window.__qrTree = {
     state: state, pickTree: pickTree, enterLink: enterLink, flip: flip,
     shareURL: shareURL, embedSnippet: embedSnippet, sendTree: sendTree, picker: PICKER,
+    downloadAnimation: downloadAnimation, recordDuration: recDuration,
   };
 })();

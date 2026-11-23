@@ -53,7 +53,7 @@ const share = doc.getElementById('share');
 share.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 const menu = doc.getElementById('menu');
 check(!menu.hidden, 'share menu opens');
-check([...menu.querySelectorAll('[data-action]')].map((b) => b.dataset.action).join(',') === 'copy,download,embed,x,facebook,whatsapp', 'menu has copy, download, embed, X, Facebook, WhatsApp');
+check([...menu.querySelectorAll('[data-action]')].map((b) => b.dataset.action).join(',') === 'copy,download,record,embed,x,facebook,whatsapp', 'menu has copy, download, animation, embed, X, Facebook, WhatsApp');
 
 // embed sheet
 api.state.link = 'https://example.com/hello';
