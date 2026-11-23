@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=14">
+<link rel="stylesheet" href="styles.css?v=16">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9'%3E%3Cpath fill='%23F7C23E' d='M4 0h1v9H4zM0 4h9v1H0zM2 2h1v1H2zM3 3h1v1H3zM5 5h1v1H5zM6 6h1v1H6zM6 2h1v1H6zM5 3h1v1H5zM3 5h1v1H3zM2 6h1v1H2z'/%3E%3C/svg%3E">
 </head>
 <body>
@@ -44,6 +44,10 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
           Скачать QR
         </button>
+        <button type="button" role="menuitem" data-action="record">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/></svg>
+          Скачать анимацию
+        </button>
         <button type="button" role="menuitem" data-action="embed">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l-6-6 6-6"/><path d="M15 6l6 6-6 6"/></svg>
           Встроить на сайт
@@ -73,6 +77,11 @@
       <label class="switch"><input id="baubles" type="checkbox" checked><span class="track" aria-hidden="true"></span>Игрушки</label>
     </div>
 
+    <button class="hint-row" type="button" id="tree-link">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+      Ссылка сразу с ёлкой — открой, и код по нажатию
+    </button>
+
     <footer class="credits">
       <span>сделано в <a href="./?tree=classic">christmas qr</a></span>
       <button class="coffee" type="button" id="embed-open">
@@ -95,10 +104,37 @@
     </div>
   </div>
 
+  <div class="origin-row">
+    <a class="origin" href="https://xmasqr.vercel.app/?tree=classic" target="_blank" rel="noopener noreferrer"
+       title="Оригинал: xmasqr.vercel.app — движок и оформление оттуда">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+      оригинал: xmasqr.vercel.app
+    </a>
+    <button class="origin-licence" type="button" id="licence-open" title="Об оригинале и лицензии">лицензия</button>
+  </div>
+
+  <div id="licence" class="sheet" hidden>
+    <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="licence-title">
+      <h2 id="licence-title">Оригинал и лицензия</h2>
+      <p class="sheet-note">Анимация, движок и оформление — из проекта
+        <a href="https://xmasqr.vercel.app/?tree=classic" target="_blank" rel="noopener noreferrer">xmasqr</a>
+        (xmasqr.vercel.app). Здесь они бережно перенесены, а сверху добавлены шаринг, встраивание
+        и скачивание анимации.</p>
+      <p class="sheet-note">Исходный сайт не публикует файл лицензии, поэтому условия использования
+        оригинального кода и графики нужно уточнять у его автора. Код этой сборки открыт в
+        репозитории — форкайте и меняйте под себя, сохраняя ссылку на оригинал.</p>
+      <div class="sheet-actions">
+        <a class="btn-primary" href="https://xmasqr.vercel.app/?tree=classic" target="_blank" rel="noopener noreferrer">Открыть оригинал</a>
+        <button type="button" id="licence-close" class="btn-ghost">Закрыть</button>
+      </div>
+      <p class="sheet-note"><a id="licence-repo" href="https://github.com/projectaaj2025-sys/christmas-QR" target="_blank" rel="noopener noreferrer">Исходники этой сборки на GitHub</a></p>
+    </div>
+  </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 </main>
 
 <script src="js/tree-engine.js?v=23"></script>
-<script src="js/app.js?v=16"></script>
+<script src="js/app.js?v=17"></script>
 </body>
 </html>
