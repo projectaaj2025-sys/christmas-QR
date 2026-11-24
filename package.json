@@ -8,13 +8,15 @@
     "dev": "vite",
     "build": "node scripts/build.mjs",
     "preview": "vite preview",
-    "verify": "node scripts/verify-scan.mjs && node scripts/verify-embed.mjs && node scripts/verify-receive.mjs && node scripts/smoke-page.mjs && node scripts/verify-extras.mjs && node scripts/verify-recording.mjs"
+    "verify": "node scripts/verify-scan.mjs && node scripts/verify-embed.mjs && node scripts/verify-receive.mjs && node scripts/smoke-page.mjs && node scripts/verify-extras.mjs && node scripts/verify-recording.mjs && node scripts/verify-gif.mjs && node scripts/verify-mp4.mjs"
   },
   "devDependencies": {
     "@napi-rs/canvas": "^0.1.80",
     "esbuild": "^0.25.0",
+    "gifenc": "^1.0.3",
     "jsdom": "^27.0.0",
     "jsqr": "^1.4.0",
+    "mp4-muxer": "^5.2.2",
     "vite": "^5.4.11"
   }
 }
