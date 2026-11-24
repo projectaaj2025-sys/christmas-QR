@@ -54,6 +54,19 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .menu button:hover, .menu button:focus-visible { background: #222228; outline: none; }
 .menu button:disabled { opacity: .45; cursor: default; }
 .menu-sep { height: 1px; background: var(--line-2); margin: 4px 8px; }
+.menu-format { margin-left: auto; padding: 2px 6px; border-radius: 6px; background: var(--accent-soft);
+  color: var(--accent-text); font: 500 10px var(--mono); letter-spacing: .06em; }
+.menu-formats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 2px 6px 4px; }
+.menu-formats-label { grid-column: 1 / -1; font: 500 10px var(--sans); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--dim); padding: 2px 2px 0; }
+.menu-formats .fmt { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 40px;
+  padding: 6px 4px; border: 1px solid var(--line-2); border-radius: 9px; background: transparent;
+  color: var(--muted); font: 600 11px var(--mono); cursor: pointer; }
+.menu-formats .fmt span { font: 400 9px var(--sans); color: var(--dim); text-align: center; line-height: 1.2; }
+.menu-formats .fmt:hover { border-color: #3A3A44; color: var(--text); }
+.menu-formats .fmt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.menu-formats .fmt[aria-pressed="true"] span { color: var(--accent-text); }
+.menu-formats .fmt:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
 
 .section-label { font: 500 11px var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); padding: 2px 4px 0; }
 

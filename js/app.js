@@ -231,73 +231,173 @@
 
   // ---------------------------------------------------------- animation
   // A short film of one tree: standing -> tilts down -> the QR code, held long
-  // enough to scan. Nothing to install — it drives the same engine on an
-  // offscreen canvas and records that canvas.
+  // enough to scan -> eases back so the clip loops. Three formats:
+  //   GIF  — drawn and quantised here, plays anywhere, any messenger;
+  //   MP4  — H.264 through WebCodecs, the format Telegram/social want;
+  //   WebM — what the browser's own MediaRecorder produces, the lightest.
   var REC = { active: false, start: 0, hold: 1.6, tilt: 1.9, tail: 3.0 };
   function recDuration() { return REC.hold + REC.tilt + REC.tail; }
+  var FORMAT_KEY = 'xmasqr:anim-format';
+  var FORMAT_NAMES = { gif: 'GIF', mp4: 'MP4', webm: 'WebM' };
+  var format = 'gif';
+  try { if (FORMAT_NAMES[localStorage.getItem(FORMAT_KEY)]) format = localStorage.getItem(FORMAT_KEY); } catch (e) { /* private mode */ }
 
-  function downloadAnimation() {
-    if (typeof window.MediaRecorder !== 'function' || !HTMLCanvasElement.prototype.captureStream) {
-      toast('Браузер не умеет записывать — попробуйте Chrome или Firefox');
-      return;
+  // the same camera curve for every format, so all three clips match
+  function camAt(t) {
+    var ease = engine.ease, tailBack = 0.9;
+    if (t < REC.hold) return 1;
+    if (t < REC.hold + REC.tilt) return 1 - ease((t - REC.hold) / REC.tilt);
+    if (t < recDuration() - tailBack) return 0;
+    return ease((t - (recDuration() - tailBack)) / tailBack);
+  }
+  function paintFrame(ctx, side, cam, t) {
+    engine.draw(ctx, side, side, payload(), state.tree, {
+      cam: cam, grow: 1, drop: 1, time: reduced ? 0 : t,
+      dpr: 1, fs: side < 520 ? 6 : side < 760 ? 7 : 8, fill: 0.88,
+      fall: snowBox.checked, baubles: baublesBox.checked,
+      plate: 'none', clean: true,
+    });
+  }
+  function saveBlob(blob, name) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+  }
+  function recordingUIBusy(busy) {
+    REC.active = busy;
+    document.body.classList.toggle('is-recording', busy);
+    var btn = menu.querySelector('[data-action="record"]');
+    if (btn) btn.disabled = busy;
+  }
+
+  // ---- GIF: frames -> palette -> LZW, no media APIs involved
+  function recordGIF() {
+    var enc = window.GIFEncoder, quant = window.quantize, pal = window.applyPalette;
+    if (!enc || !quant || !pal) { toast('Не загрузился GIF-энкодер'); return; }
+    var side = 480, fps = 10, total = recDuration();
+    var canvas = document.createElement('canvas');
+    canvas.width = canvas.height = side;
+    var ctx = canvas.getContext('2d', { willReadFrequently: true });
+    var gif = enc();
+    var frame = 0, n = Math.round(total * fps);
+    recordingUIBusy(true);
+    toast('Собираю GIF — примерно ' + Math.round(total) + ' с');
+    function next() {
+      try { frameStep(); } catch (err) {
+        recordingUIBusy(false);
+        toast('GIF не собрался — попробуйте WebM');
+      }
     }
-    var mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
-      .filter(function (m) { return window.MediaRecorder.isTypeSupported && window.MediaRecorder.isTypeSupported(m); })[0];
-    if (!mime) { toast('Браузер не умеет записывать видео'); return; }
+    next();
+    function frameStep() {
+      if (frame > n) {
+        gif.finish();
+        saveBlob(new Blob([gif.bytes()], { type: 'image/gif' }), 'christmas-qr.gif');
+        recordingUIBusy(false);
+        toast('GIF сохранён');
+        return;
+      }
+      var t = (frame / fps);
+      paintFrame(ctx, side, camAt(t), 3.2 + t);
+      var data = ctx.getImageData(0, 0, side, side).data;
+      // 96 colours keeps the tree lively and the code readable; the dark page stays flat
+      var palette = quant(data, 96, { format: 'rgb565' });
+      gif.writeFrame(pal(data, palette, 'rgb565'), side, side, {
+        palette: palette,
+        delay: Math.round(1000 / fps),
+        repeat: 0,
+      });
+      frame += 1;
+      setTimeout(next, 0);
+    }
+  }
 
-    // square frames keep the tree and the code equally readable in a chat player
+  // ---- MP4: H.264 via WebCodecs, muxed by mp4-muxer
+  function recordMP4() {
+    if (!window.VideoEncoder || !window.VideoFrame) { recordGIF(); toast('Нет WebCodecs — сохранил GIF'); return; }
+    var Muxer = window.Mp4Muxer, Target = window.Mp4Target;
+    if (!Muxer) { recordGIF(); toast('Нет MP4-упаковщика — сохранил GIF'); return; }
+    var side = 720, fps = 25, total = recDuration(), n = Math.round(total * fps);
+    var canvas = document.createElement('canvas');
+    canvas.width = canvas.height = side;
+    var ctx = canvas.getContext('2d');
+    var muxer = new Muxer({
+      target: new Target(),
+      video: { codec: 'avc', width: side, height: side, frameRate: fps },
+      fastStart: 'in-memory',
+    });
+    var encoder, finished = false;
+    function done() {
+      if (finished) return;
+      finished = true;
+      muxer.finalize();
+      saveBlob(new Blob([muxer.target.buffer], { type: 'video/mp4' }), 'christmas-qr.mp4');
+      recordingUIBusy(false);
+      toast('MP4 сохранён');
+    }
+    try {
+      encoder = new window.VideoEncoder({
+        output: function (chunk, meta) { muxer.addVideoChunk(chunk, meta); },
+        error: function () { toast('MP4 не получился — сохраняю GIF'); recordingUIBusy(false); recordGIF(); },
+      });
+      encoder.configure({ codec: 'avc1.4d0028', width: side, height: side, bitrate: 4000000, framerate: fps });
+    } catch (err) { toast('Браузер не умеет MP4 — сохраняю GIF'); recordGIF(); return; }
+
+    recordingUIBusy(true);
+    toast('Кодирую MP4 — примерно ' + Math.round(total) + ' с');
+    var f = 0;
+    (function next() {
+      if (f > n) { encoder.flush().then(done, done); return; }
+      var t = f / fps;
+      paintFrame(ctx, side, camAt(t), 3.2 + t);
+      encoder.encode(new window.VideoFrame(canvas, { timestamp: Math.round((f * 1e6) / fps) }));
+      f += 1;
+      // let the encoder breathe so its queue does not grow without bound
+      setTimeout(next, 0);
+    })();
+  }
+
+  // ---- WebM: the browser's own recorder
+  function recordWebM() {
+    if (typeof window.MediaRecorder !== 'function' || !HTMLCanvasElement.prototype.captureStream) {
+      recordGIF(); toast('Нет MediaRecorder — сохранил GIF'); return;
+    }
+    var mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+      .filter(function (m) { return window.MediaRecorder.isTypeSupported && window.MediaRecorder.isTypeSupported(m); })[0];
+    if (!mime) { recordGIF(); toast('Нет WebM — сохранил GIF'); return; }
     var side = Math.min(960, Math.round(Math.min(window.innerWidth, window.innerHeight) * 1.2));
-    var rec = document.createElement('canvas');
-    rec.width = rec.height = side;
-    var rctx = rec.getContext('2d');
-    var stream = rec.captureStream(30);
-    var chunks = [];
-    var mr;
-    try { mr = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6000000 }); }
-    catch (err) { toast('Не удалось начать запись'); return; }
+    var canvas = document.createElement('canvas');
+    canvas.width = canvas.height = side;
+    var ctx = canvas.getContext('2d');
+    var chunks = [], mr;
+    try { mr = new window.MediaRecorder(canvas.captureStream(30), { mimeType: mime, videoBitsPerSecond: 6000000 }); }
+    catch (err) { recordGIF(); toast('Не удалось начать запись — сохранил GIF'); return; }
     mr.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
     mr.onstop = function () {
-      var blob = new Blob(chunks, { type: mime.split(';')[0] });
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'christmas-qr.' + (mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm');
-      a.click();
-      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
-      toast('Анимация сохранена');
-      REC.active = false;
-      document.body.classList.remove('is-recording');
-      reEnable();
+      saveBlob(new Blob(chunks, { type: mime.split(';')[0] }), 'christmas-qr.webm');
+      recordingUIBusy(false);
+      toast('WebM сохранён');
     };
-
-    REC.active = true;
-    REC.start = performance.now();
-    document.body.classList.add('is-recording');
-    var recordBtn = menu.querySelector('[data-action="record"]');
-    if (recordBtn) recordBtn.disabled = true;
-    var reEnable = function () { if (recordBtn) recordBtn.disabled = false; };
-    toast('Записываю анимацию — ' + Math.round(recDuration()) + ' с');
-    drawRecording(rctx, side, performance.now());
+    recordingUIBusy(true);
+    toast('Записываю — ' + Math.round(recDuration()) + ' с');
+    var start = performance.now();
+    (function paint(now) {
+      if (!REC.active) return;
+      var t = (now - start) / 1000;
+      paintFrame(ctx, side, camAt(t), 3.2 + t);
+      requestAnimationFrame(paint);
+    })(performance.now());
     mr.start(200);
     setTimeout(function () { if (mr.state !== 'inactive') mr.stop(); }, recDuration() * 1000 + 250);
   }
 
-  // timeline: hold the finished tree, tilt down to the code, then hold the code
-  function drawRecording(rctx, side, now) {
-    if (!REC.active) return;
-    var t = (now - REC.start) / 1000;
-    var ease = engine.ease;
-    var cam = 1, tailBack = 0.9;
-    if (t < REC.hold) cam = 1;                                         // the tree, spinning
-    else if (t < REC.hold + REC.tilt) cam = 1 - ease((t - REC.hold) / REC.tilt); // tilt down to the code
-    else if (t < REC.hold + REC.tilt + REC.tail - tailBack) cam = 0;    // hold the code long enough to scan
-    else cam = ease((t - (recDuration() - tailBack)) / tailBack);       // ease back so the clip loops
-    engine.draw(rctx, side, side, payload(), state.tree, {
-      cam: cam, grow: 1, drop: 1, time: reduced ? 0 : t + 3.2,
-      dpr: 1, fs: side < 520 ? 6 : 8, fill: 0.88,
-      fall: snowBox.checked, baubles: baublesBox.checked,
-      plate: 'none', clean: true,
-    });
-    requestAnimationFrame(function (next) { drawRecording(rctx, side, next); });
+  function downloadAnimation() {
+    if (REC.active) return;
+    if (format === 'mp4') recordMP4();
+    else if (format === 'webm') recordWebM();
+    else recordGIF();
   }
 
   function embedSnippet() {
@@ -382,6 +482,27 @@
   $('licence-close').addEventListener('click', closeLicence);
   licenceSheet.addEventListener('click', function (e) { if (e.target === licenceSheet) closeLicence(); });
 
+  // format picker inside the share menu
+  var fmtButtons = [].slice.call(document.querySelectorAll('.menu-formats .fmt'));
+  function syncFormats() {
+    fmtButtons.forEach(function (b) {
+      var on = b.dataset.format === format;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    var label = $('anim-label');
+    if (label) label.textContent = FORMAT_NAMES[format] || 'GIF';
+  }
+  fmtButtons.forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      format = b.dataset.format;
+      try { localStorage.setItem(FORMAT_KEY, format); } catch (err) { /* private mode */ }
+      syncFormats();
+      toast('Анимация сохранится как ' + FORMAT_NAMES[format]);
+    });
+  });
+  syncFormats();
+
   $('embed-open').addEventListener('click', openEmbed);
   $('embed-copy').addEventListener('click', function () {
     copyText(embedCode.value).then(function () { toast('Код для вставки скопирован'); }, function () { toast('Не удалось скопировать'); });
@@ -433,6 +554,7 @@
   window.__qrTree = {
     state: state, pickTree: pickTree, enterLink: enterLink, flip: flip,
     shareURL: shareURL, embedSnippet: embedSnippet, sendTree: sendTree, picker: PICKER,
-    downloadAnimation: downloadAnimation, recordDuration: recDuration,
+    downloadAnimation: downloadAnimation, recordDuration: recDuration, camAt: camAt,
+    downloadQR: downloadQR, setFormat: function (f) { format = f; try { localStorage.setItem(FORMAT_KEY, f); } catch (e) {} syncFormats(); },
   };
 })();
