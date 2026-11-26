@@ -104,6 +104,31 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   background: var(--text); color: var(--bg); font: 500 12px var(--sans); }
 .toast[hidden] { display: none; }
 
+/* Foldable panel: the tab slides along the top edge, the body collapses upwards */
+.panel { transition: transform .32s cubic-bezier(.3, .8, .3, 1), width .32s ease, padding .32s ease; }
+.panel-body { display: flex; flex-direction: column; gap: 10px; overflow: hidden; transition: opacity .22s ease, max-height .32s ease; max-height: 640px; }
+.panel-toggle { position: absolute; top: -30px; right: 10px; display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 26px; padding: 0; border: 1px solid var(--line); border-bottom: 0; border-radius: 9px 9px 0 0;
+  background: var(--panel); color: var(--muted); cursor: pointer; }
+.panel-toggle:hover { color: var(--text); background: var(--panel-2); }
+.panel-toggle:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.panel-toggle .fold-show { display: none; }
+.panel-open { position: absolute; right: 24px; bottom: 40px; z-index: 3; display: inline-flex; align-items: center; gap: 7px;
+  min-height: 36px; padding: 0 12px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--panel-2);
+  color: var(--text); font: 500 12px var(--sans); cursor: pointer; }
+.panel-open:hover { background: #26262C; }
+.panel-open:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.panel-open[hidden] { display: none; }
+
+/* folded: only the tab is left */
+.app.panel-hidden .panel { width: 30px; padding: 0; background: transparent; border-color: transparent; box-shadow: none; }
+.app.panel-hidden .panel-body { max-height: 0; opacity: 0; pointer-events: none; }
+.app.panel-hidden .panel-toggle { top: 0; right: 0; width: 30px; height: 30px; border: 1px solid var(--line-2);
+  border-radius: 10px; background: var(--panel-2); box-shadow: 0 6px 18px rgba(0, 0, 0, .35); }
+.app.panel-hidden .panel-toggle .fold-show { display: block; }
+.app.panel-hidden .panel-toggle .fold-hide { display: none; }
+.app.panel-hidden .origin-row { right: 66px; }
+
 /* Corner credit to the original + licence */
 .origin-row { position: absolute; right: 24px; bottom: 14px; z-index: 2; display: flex; align-items: center; gap: 10px; }
 .origin { display: inline-flex; align-items: center; gap: 6px; font: 500 11px var(--sans);
@@ -171,6 +196,12 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   .chip .dot { width: 13px; height: 13px; margin: 0; }
   .tree-name { display: block; flex: 1; text-align: center; font: 500 12px var(--sans); letter-spacing: 0.04em; color: var(--muted); }
   .credits { position: fixed; top: 16px; right: 16px; z-index: 3; gap: 8px; padding: 0; font-size: 11px; }
+  .panel-toggle { top: 0; right: 8px; width: 34px; height: 28px; border: 1px solid var(--line); border-radius: 9px; }
+  .app.panel-hidden .panel { position: absolute; top: 8px; right: 8px; width: auto; padding: 0; }
+  .app.panel-hidden .panel-toggle { position: static; width: 34px; height: 30px; }
+  .app.panel-hidden .panel-body { display: none; }
+  .app.panel-hidden .stage { flex: 1 1 auto; }
+  .panel-open { right: 16px; bottom: 16px; min-height: 34px; font-size: 11px; }
   .origin-row { position: static; order: 4; align-self: stretch; justify-content: space-between;
     padding: 0 2px 2px; font-size: 10px; }
   .origin, .origin-licence { font-size: 10px; }

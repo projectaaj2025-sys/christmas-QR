@@ -17,6 +17,8 @@
   var urlInput = $('url'), shareBtn = $('share'), menu = $('menu'), toastEl = $('toast');
   var snowBox = $('snow'), baublesBox = $('baubles'), treeName = $('tree-name');
   var embedSheet = $('embed'), embedCode = $('embed-code'), embedPreview = $('embed-preview');
+  var appEl = document.querySelector('.app'), panel = $('panel'), panelBody = $('panel-body');
+  var panelToggle = $('panel-toggle'), panelOpen = $('panel-open');
   var ctx = canvas.getContext('2d');
   var reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
@@ -467,6 +469,37 @@
     copyText(url).then(function () { toast('Ссылка скопирована — отправьте её другу'); }, function () { toast(url); });
   }
 
+  // ------------------------------------------------------- foldable panel
+  // The panel can slide away so the tree gets the whole screen: the tab on its
+  // edge, a chip in the corner, or the H key. The choice is remembered.
+  var PANEL_KEY = 'xmasqr:panel';
+  function setPanel(hidden, announce) {
+    appEl.classList.toggle('panel-hidden', hidden);
+    panelToggle.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+    panelToggle.title = hidden ? 'Показать панель (клавиша H)' : 'Скрыть панель (клавиша H)';
+    panelOpen.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+    panelOpen.hidden = !hidden;
+    panelBody.setAttribute('aria-hidden', hidden ? 'true' : 'false');
+    try { localStorage.setItem(PANEL_KEY, hidden ? '0' : '1'); } catch (e) { /* private mode */ }
+    if (hidden) closeMenu();
+    if (announce) toast(hidden ? 'Панель скрыта — клавиша H вернёт её' : 'Панель вернулась');
+  }
+  function togglePanel(announce) { setPanel(!appEl.classList.contains('panel-hidden'), announce); }
+  var startHidden = false;
+  try { startHidden = localStorage.getItem(PANEL_KEY) === '0'; } catch (e) { /* private mode */ }
+  if (params.get('panel') === '0') startHidden = true;
+  setPanel(startHidden, false);
+  panelToggle.addEventListener('click', function () { togglePanel(true); });
+  panelOpen.addEventListener('click', function () { setPanel(false, true); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'h' && e.key !== 'H' && e.key !== 'р' && e.key !== 'Р') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
+    e.preventDefault();
+    togglePanel(true);
+  });
+
   // ----------------------------------------------------------------- panel
   // "ссылка сразу с ёлкой": hand over the exact URL that opens as a standing tree
   $('tree-link').addEventListener('click', function () {
@@ -554,6 +587,7 @@
   window.__qrTree = {
     state: state, pickTree: pickTree, enterLink: enterLink, flip: flip,
     shareURL: shareURL, embedSnippet: embedSnippet, sendTree: sendTree, picker: PICKER,
+    setPanel: setPanel, togglePanel: togglePanel, isPanelHidden: function () { return appEl.classList.contains('panel-hidden'); },
     downloadAnimation: downloadAnimation, recordDuration: recDuration, camAt: camAt,
     downloadQR: downloadQR, setFormat: function (f) { format = f; try { localStorage.setItem(FORMAT_KEY, f); } catch (e) {} syncFormats(); },
   };
